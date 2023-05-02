@@ -29,6 +29,9 @@ class UnknownTokenError(Exception):
         super().__init__(self.message)
 
 
+TOKENS = []
+
+
 KEYWORDS_DEFINITION = {
     'void',
     'string',
@@ -94,16 +97,29 @@ SEPARATORS = {
     ','
 }
 
-LITERALS = {}
+
+@dataclass
+class LiteralHelper:
+    id: int
+    data_type: Any
+
+
+@dataclass
+class IdentifierHelper(LiteralHelper):
+    value: Any
+
+LITERALS = []
 COMMENTS = {}
-IDENTIFIERS = {}
+IDENTIFIERS = []
 
 
 class STATES(Flag):
     NOTHING = auto()
     STRING = auto()
     SLASH = auto()
-    NUMBER = auto()
+    INT = auto()
+    DOUBLE = auto()
+    BOOL = auto()
     DOT = auto()
     OPERATOR = auto()
     DEFINITION = auto()
@@ -123,7 +139,12 @@ class LexicalAnalyser:
 
     def add_token(self):
         self.cur_token.id = self.cur_token_id
-        print(f"id: {self.cur_token.id}, type: {self.cur_token.type.value}, value: {self.cur_token.value}")
+        TOKENS.append(self.cur_token)
+        if self.cur_token.type == TokenType.LITERAL:
+            LITERALS.append(LiteralHelper(self.cur_token.id, self.CURRENT_STATE))
+        # elif self.cur_token.type == TokenType.IDENTIFIER:
+          #  IDENTIFIERS.append()
+        print(f"id: {self.cur_token.id}, type: {self.cur_token.type}, value: {self.cur_token.value}")
         self.cur_token = Token(None, None, None)
         self.CURRENT_STATE = STATES.NOTHING
         self.cur_token_id += 1
@@ -152,15 +173,15 @@ class LexicalAnalyser:
             self.cur_token.value += self.cur_line[self.cur_col_index]
         else:
             self.cur_token.value = self.cur_line[self.cur_col_index]
-        self.CURRENT_STATE = STATES.NUMBER
+        self.CURRENT_STATE = STATES.INT
         self.cur_col_index += 1
         while self.cur_col_index < len(self.cur_line):
             ch: str = self.cur_line[self.cur_col_index]
             if ch == '.':
-                if STATES.DOT in self.CURRENT_STATE:
+                if self.CURRENT_STATE == STATES.DOUBLE:
                     self.cur_token.value += ch
                     raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value)
-                self.CURRENT_STATE |= STATES.DOT
+                self.CURRENT_STATE = STATES.DOUBLE
             elif not ch.isdigit():
                 self.cur_col_index -= 1
                 if ch.isalpha():
@@ -193,6 +214,7 @@ class LexicalAnalyser:
             ch = self.cur_line[self.cur_col_index]
             if not ch.isalpha() and ch != '_':
                 if self.cur_token.value == 'true' or self.cur_token.value == 'false':
+                    self.CURRENT_STATE = STATES.BOOL
                     self.cur_token.type = TokenType.LITERAL
                 elif self.cur_token.value in KEYWORDS_DEFINITION or self.cur_token.value in KEYWORDS:
                     self.CURRENT_STATE = STATES.DEFINITION
@@ -233,5 +255,5 @@ class LexicalAnalyser:
 
 
 if __name__ == '__main__':
-    print()
+    print(STATES.BOOL)
     LexicalAnalyser('test.cpp').parse()
