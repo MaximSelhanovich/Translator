@@ -1,10 +1,23 @@
 from dataclasses import dataclass
 from typing import Any
+from enum import Enum, Flag, auto
+
+
+class TokenType(Enum):
+    LITERAL = 'literal'
+    COMMENT = 'comment'
+    IDENTIFIER = 'identifier'
+    SEPARATOR = 'separator'
+    OPERATOR = 'operator'
+    KEY_WORD = 'key_word'
+
+
 @dataclass
 class Token:
     id: int
-    type: Any
+    type: TokenType
     value: Any
+
 
 class UnknownTokenError(Exception):
     def __init__(self, line, column, token_value):
@@ -14,7 +27,6 @@ class UnknownTokenError(Exception):
         message = f"Unknown token at ({line}, {column}) with value ({token_value})"
         self.message = message
         super().__init__(self.message)
-
 
 
 KEY_WORDS = {
@@ -32,7 +44,9 @@ KEY_WORDS = {
     'for',
     'continue',
     'break',
-    'return'
+    'return',
+    'cin',
+    'cout'
 }
 
 
@@ -42,13 +56,17 @@ OPERATORS = {
     '*',
     '/',
     '=',
+    '<',
+    '>',
+    '|',
+    '&',
+    '<<',
+    '>>',
     '+=',
     '-=',
     '*=',
     '/=',
     '==',
-    '|',
-    '&',
     '||',
     '&&'
 }
@@ -70,11 +88,98 @@ COMMENTS = {}
 IDENTIFIERS = {}
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+class STATES(Flag):
+    NOTHING = auto()
+    STRING = auto()
+    SLASH = auto()
+    NUMBER = auto()
+    DOT = auto()
+    OPERATOR = auto()
 
 
-# Press the green button in the gutter to run the script.
+class LexicalAnalyser:
+    def __init__(self, file_name):
+        self.file_name = file_name
+        with open(file_name) as f:
+            self.lines = f.readlines()
+        self.CURRENT_STATE: STATES = STATES.NOTHING
+        self.cur_line_index: int = 0
+        self.cur_col_index: int = 0
+        self.cur_token: Token = Token(0, TokenType.COMMENT, None)
+        self.cur_line = None
+        self.cur_token_id: int = 0
+
+    def add_token(self):
+        self.cur_token.id = self.cur_token_id
+        print(f"id: {self.cur_token.id}, type: {self.cur_token.type.value}, value: {self.cur_token.value}")
+        self.cur_token = Token(None, None, None)
+        self.cur_token_id += 1
+
+    def parse_string_literal(self):
+        self.cur_token.type = TokenType.LITERAL
+
+        self.cur_token.value = self.cur_line[self.cur_col_index]
+        self.cur_col_index += 1
+        while self.cur_col_index < len(self.cur_line):
+            ch = self.cur_line[self.cur_col_index]
+            self.cur_col_index += 1
+            self.cur_token.value += ch
+            if ch == '\\':
+                self.CURRENT_STATE |= STATES.SLASH
+            elif STATES.SLASH in self.CURRENT_STATE:
+                self.CURRENT_STATE ^= STATES.SLASH
+            elif ch == '"' and STATES.SLASH not in self.CURRENT_STATE:
+                self.add_token()
+                return
+
+    def parse_number_literal(self):
+        self.cur_token.type = TokenType.LITERAL
+
+        self.cur_token.value = self.cur_line[self.cur_col_index]
+        self.cur_col_index += 1
+        while self.cur_col_index < len(self.cur_line):
+            ch = self.cur_line[self.cur_col_index]
+            self.cur_col_index += 1
+
+            if ch == '.':
+                if STATES.DOT in self.CURRENT_STATE:
+                    self.cur_token.value += ch
+                    raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value)
+                self.CURRENT_STATE |= STATES.DOT
+            elif not ch.isdigit():
+                self.add_token()
+                return
+            self.cur_token.value += ch
+
+    def _can_be_number(self, char: str):
+        return char.isdigit() or char in ['+', '-']
+
+    def parse(self):
+        while self.cur_line_index < len(self.lines):
+            self.cur_line = self.lines[self.cur_line_index].strip()
+            self.cur_col_index = 0
+            while self.cur_col_index < len(self.cur_line):
+                cur_char = self.cur_line[self.cur_col_index]
+                if cur_char.isspace() and self.cur_token.value is not None:
+                    self.add_token()
+                elif cur_char in SEPARATORS:
+                    self.cur_token.value = cur_char
+                    self.cur_token.type = TokenType.SEPARATOR
+                    self.add_token()
+                elif cur_char in OPERATORS:
+                    self.cur_token.value = cur_char
+                    self.cur_token.type = TokenType.OPERATOR
+                elif cur_char == '"':
+                    self.CURRENT_STATE = STATES.STRING
+                    self.parse_string_literal()
+                elif cur_char in OPERATORS:
+                    self.CURRENT_STATE = STATES.OPERATOR
+                elif self._can_be_number(cur_char):
+                    self.CURRENT_STATE = STATES.NUMBER
+                    self.parse_number_literal()
+                self.cur_col_index += 1
+            self.cur_line_index += 1
+
+
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    LexicalAnalyser('test.cpp').parse()
