@@ -50,7 +50,7 @@ KEY_WORDS = {
 }
 
 
-OPERATORS = {
+ONE_CHAR_OPERATORS = {
     '+',
     '-',
     '*',
@@ -60,6 +60,11 @@ OPERATORS = {
     '>',
     '|',
     '&',
+}
+
+TWO_CHAR_OPERATORS = {
+    '++',
+    '--',
     '<<',
     '>>',
     '+=',
@@ -68,7 +73,9 @@ OPERATORS = {
     '/=',
     '==',
     '||',
-    '&&'
+    '&&',
+    '>=',
+    '<='
 }
 
 SEPARATORS = {
@@ -113,16 +120,17 @@ class LexicalAnalyser:
         self.cur_token.id = self.cur_token_id
         print(f"id: {self.cur_token.id}, type: {self.cur_token.type.value}, value: {self.cur_token.value}")
         self.cur_token = Token(None, None, None)
+        self.CURRENT_STATE = STATES.NOTHING
         self.cur_token_id += 1
 
     def parse_string_literal(self):
+        self.CURRENT_STATE = STATES.STRING
         self.cur_token.type = TokenType.LITERAL
 
         self.cur_token.value = self.cur_line[self.cur_col_index]
         self.cur_col_index += 1
         while self.cur_col_index < len(self.cur_line):
             ch = self.cur_line[self.cur_col_index]
-            self.cur_col_index += 1
             self.cur_token.value += ch
             if ch == '\\':
                 self.CURRENT_STATE |= STATES.SLASH
@@ -131,28 +139,41 @@ class LexicalAnalyser:
             elif ch == '"' and STATES.SLASH not in self.CURRENT_STATE:
                 self.add_token()
                 return
+            self.cur_col_index += 1
 
     def parse_number_literal(self):
         self.cur_token.type = TokenType.LITERAL
-
-        self.cur_token.value = self.cur_line[self.cur_col_index]
+        if self.CURRENT_STATE == STATES.OPERATOR:
+            self.cur_token.value += self.cur_line[self.cur_col_index]
+        else:
+            self.cur_token.value = self.cur_line[self.cur_col_index]
+        self.CURRENT_STATE = STATES.NUMBER
         self.cur_col_index += 1
         while self.cur_col_index < len(self.cur_line):
             ch = self.cur_line[self.cur_col_index]
-            self.cur_col_index += 1
-
             if ch == '.':
                 if STATES.DOT in self.CURRENT_STATE:
                     self.cur_token.value += ch
                     raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value)
                 self.CURRENT_STATE |= STATES.DOT
             elif not ch.isdigit():
+                self.cur_col_index -= 1
                 self.add_token()
                 return
+            self.cur_col_index += 1
             self.cur_token.value += ch
 
-    def _can_be_number(self, char: str):
-        return char.isdigit() or char in ['+', '-']
+    def parse_operator(self):
+        cur_char = self.cur_line[self.cur_col_index]
+        if self.CURRENT_STATE == STATES.OPERATOR:
+            self.cur_token.value += cur_char
+            if self.cur_token.value not in TWO_CHAR_OPERATORS:
+                raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value)
+            self.add_token()
+            return
+        self.CURRENT_STATE = STATES.OPERATOR
+        self.cur_token.value = cur_char
+        self.cur_token.type = TokenType.OPERATOR
 
     def parse(self):
         while self.cur_line_index < len(self.lines):
@@ -166,16 +187,11 @@ class LexicalAnalyser:
                     self.cur_token.value = cur_char
                     self.cur_token.type = TokenType.SEPARATOR
                     self.add_token()
-                elif cur_char in OPERATORS:
-                    self.cur_token.value = cur_char
-                    self.cur_token.type = TokenType.OPERATOR
+                elif cur_char in ONE_CHAR_OPERATORS:
+                    self.parse_operator()
                 elif cur_char == '"':
-                    self.CURRENT_STATE = STATES.STRING
                     self.parse_string_literal()
-                elif cur_char in OPERATORS:
-                    self.CURRENT_STATE = STATES.OPERATOR
-                elif self._can_be_number(cur_char):
-                    self.CURRENT_STATE = STATES.NUMBER
+                elif cur_char.isdigit():
                     self.parse_number_literal()
                 self.cur_col_index += 1
             self.cur_line_index += 1
