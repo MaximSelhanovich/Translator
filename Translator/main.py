@@ -24,7 +24,7 @@ class UnknownTokenError(Exception):
         self.line = line
         self.column = column
         self.token_value = token_value
-        message = f"Unknown token at ({line}, {column}) with value ({token_value})"
+        message = f'Unknown token at ({line}, {column}) with value ({token_value})'
         self.message = message
         super().__init__(self.message)
 
@@ -90,7 +90,7 @@ SEPARATORS = {
     '(',
     ')',
     ';',
-    ':'
+    ':',
     ','
 }
 
@@ -211,8 +211,9 @@ class LexicalAnalyser:
             self.cur_col_index = 0
             while self.cur_col_index < len(self.cur_line):
                 cur_char = self.cur_line[self.cur_col_index]
-                if cur_char.isspace() and self.cur_token.value is not None:
-                    self.add_token()
+                if cur_char.isspace():
+                    if self.cur_token.value is not None:
+                        self.add_token()
                 elif cur_char in SEPARATORS:
                     self.cur_token.value = cur_char
                     self.cur_token.type = TokenType.SEPARATOR
@@ -225,6 +226,8 @@ class LexicalAnalyser:
                     self.parse_number_literal()
                 elif cur_char.isalpha() or cur_char == '_':
                     self.parse_non_literal()
+                else:
+                    raise UnknownTokenError(self.cur_line_index, self.cur_col_index, cur_char)
                 self.cur_col_index += 1
             self.cur_line_index += 1
 
