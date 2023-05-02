@@ -1,7 +1,73 @@
-# This is a sample Python script.
+from dataclasses import dataclass
+from typing import Any
+@dataclass
+class Token:
+    id: int
+    type: Any
+    value: Any
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+class UnknownTokenError(Exception):
+    def __init__(self, line, column, token_value):
+        self.line = line
+        self.column = column
+        self.token_value = token_value
+        message = f"Unknown token at ({line}, {column}) with value ({token_value})"
+        self.message = message
+        super().__init__(self.message)
+
+
+
+KEY_WORDS = {
+    'void',
+    'string',
+    'int',
+    'double',
+    'bool',
+    'true',
+    'false',
+    'if',
+    'else',
+    'while',
+    'do',
+    'for',
+    'continue',
+    'break',
+    'return'
+}
+
+
+OPERATORS = {
+    '+',
+    '-',
+    '*',
+    '/',
+    '=',
+    '+=',
+    '-=',
+    '*=',
+    '/=',
+    '==',
+    '|',
+    '&',
+    '||',
+    '&&'
+}
+
+SEPARATORS = {
+    '{',
+    '}',
+    '[',
+    ']',
+    '(',
+    ')',
+    ';',
+    ':'
+    ','
+}
+
+LITERALS = {}
+COMMENTS = {}
+IDENTIFIERS = {}
 
 
 def print_hi(name):
@@ -12,5 +78,3 @@ def print_hi(name):
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
