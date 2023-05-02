@@ -9,7 +9,7 @@ class TokenType(Enum):
     IDENTIFIER = 'identifier'
     SEPARATOR = 'separator'
     OPERATOR = 'operator'
-    KEY_WORD = 'key_word'
+    KEYWORD = 'keyword'
 
 
 @dataclass
@@ -29,12 +29,16 @@ class UnknownTokenError(Exception):
         super().__init__(self.message)
 
 
-KEY_WORDS = {
+KEYWORDS_DEFINITION = {
     'void',
     'string',
     'int',
     'double',
-    'bool',
+    'bool'
+}
+
+
+KEYWORDS = {
     'true',
     'false',
     'if',
@@ -102,6 +106,7 @@ class STATES(Flag):
     NUMBER = auto()
     DOT = auto()
     OPERATOR = auto()
+    DEFINITION = auto()
 
 
 class LexicalAnalyser:
@@ -150,7 +155,7 @@ class LexicalAnalyser:
         self.CURRENT_STATE = STATES.NUMBER
         self.cur_col_index += 1
         while self.cur_col_index < len(self.cur_line):
-            ch = self.cur_line[self.cur_col_index]
+            ch: str = self.cur_line[self.cur_col_index]
             if ch == '.':
                 if STATES.DOT in self.CURRENT_STATE:
                     self.cur_token.value += ch
@@ -158,6 +163,9 @@ class LexicalAnalyser:
                 self.CURRENT_STATE |= STATES.DOT
             elif not ch.isdigit():
                 self.cur_col_index -= 1
+                if ch.isalpha():
+                    self.cur_token.value += ch
+                    raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value)
                 self.add_token()
                 return
             self.cur_col_index += 1
@@ -174,6 +182,28 @@ class LexicalAnalyser:
         self.CURRENT_STATE = STATES.OPERATOR
         self.cur_token.value = cur_char
         self.cur_token.type = TokenType.OPERATOR
+
+    def parse_non_literal(self):
+        # self.CURRENT_STATE = STATES.STRING
+        # self.cur_token.type = TokenType.LITERAL
+
+        self.cur_token.value = self.cur_line[self.cur_col_index]
+        self.cur_col_index += 1
+        while self.cur_col_index < len(self.cur_line):
+            ch = self.cur_line[self.cur_col_index]
+            if not ch.isalpha() and ch != '_':
+                if self.cur_token.value == 'true' or self.cur_token.value == 'false':
+                    self.cur_token.type = TokenType.LITERAL
+                elif self.cur_token.value in KEYWORDS_DEFINITION or self.cur_token.value in KEYWORDS:
+                    self.CURRENT_STATE = STATES.DEFINITION
+                    self.cur_token.type = TokenType.KEYWORD
+                else:
+                    self.cur_token.type = TokenType.IDENTIFIER
+                self.add_token()
+                self.cur_col_index -= 1
+                return
+            self.cur_token.value += ch
+            self.cur_col_index += 1
 
     def parse(self):
         while self.cur_line_index < len(self.lines):
@@ -193,9 +223,12 @@ class LexicalAnalyser:
                     self.parse_string_literal()
                 elif cur_char.isdigit():
                     self.parse_number_literal()
+                elif cur_char.isalpha() or cur_char == '_':
+                    self.parse_non_literal()
                 self.cur_col_index += 1
             self.cur_line_index += 1
 
 
 if __name__ == '__main__':
+    print()
     LexicalAnalyser('test.cpp').parse()
