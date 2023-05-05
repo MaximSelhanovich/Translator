@@ -47,7 +47,6 @@ class LexicalAnalyser:
                 self.CURRENT_STATE ^= STATES.DEFINITION
             elif not self.check_identifier_existence():
                 raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value)
-        # print(f"id: {self.cur_token.id}, type: {self.cur_token.type}, value: {self.cur_token.value}")
         self.cur_token = Token(None, None, None)
         self.CURRENT_STATE |= STATES.NOTHING
         self.cur_token_id += 1
@@ -64,6 +63,9 @@ class LexicalAnalyser:
             if ch == '\\':
                 self.CURRENT_STATE |= STATES.SLASH
             elif STATES.SLASH in self.CURRENT_STATE:
+                if ch not in ['t', 'r', 'n', '"', '\\']:
+                    raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value,
+                                            'unknown escape sequence')
                 self.CURRENT_STATE ^= STATES.SLASH
             elif ch == '"' and STATES.SLASH not in self.CURRENT_STATE:
                 self.add_token()
@@ -83,13 +85,15 @@ class LexicalAnalyser:
             if ch == '.':
                 if self.CURRENT_STATE == STATES.DOUBLE:
                     self.cur_token.value += ch
-                    raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value)
+                    raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value,
+                                            ' wrong number of dots for double')
                 self.CURRENT_STATE = STATES.DOUBLE
             elif not ch.isdigit():
                 self.cur_col_index -= 1
                 if ch.isalpha():
                     self.cur_token.value += ch
-                    raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value)
+                    raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value,
+                                            ' wrong character for number')
                 self.add_token()
                 return
             self.cur_col_index += 1
@@ -100,7 +104,8 @@ class LexicalAnalyser:
         if self.CURRENT_STATE == STATES.OPERATOR:
             self.cur_token.value += cur_char
             if self.cur_token.value not in TWO_CHAR_OPERATORS:
-                raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value)
+                raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value,
+                                        'unknown operator')
             self.add_token()
             return
         self.CURRENT_STATE = STATES.OPERATOR
@@ -150,6 +155,7 @@ class LexicalAnalyser:
                 elif cur_char.isalpha() or cur_char == '_':
                     self.parse_non_literal()
                 else:
-                    raise UnknownTokenError(self.cur_line_index, self.cur_col_index, cur_char)
+                    raise UnknownTokenError(self.cur_line_index, self.cur_col_index, cur_char,
+                                            ' unknown character')
                 self.cur_col_index += 1
             self.cur_line_index += 1
