@@ -1,13 +1,12 @@
 from lexical_analyser import LexicalAnalyser
 from token_data import *
 from lexical_errors import LexicalError
-
+from CPP14Parser import CPP14Parser
+from CPP14Lexer import CPP14Lexer
+from antlr4 import *
 if __name__ == '__main__':
-    try:
-        LexicalAnalyser('test.cpp').parse()
-        TOKENS.print_unique(TokenType.IDENTIFIER)
-        TOKENS.print_unique(TokenType.KEYWORD)
-        TOKENS.print_unique(TokenType.OPERATOR)
-        TOKENS.print_unique(TokenType.LITERAL)
-    except LexicalError as err:
-        print(err)
+    input_stream = FileStream('test.cpp')
+    lexer = CPP14Lexer(input_stream)
+    stream = CommonTokenStream(lexer)
+    parser = CPP14Parser(stream)
+    tree = parser.startRule()
