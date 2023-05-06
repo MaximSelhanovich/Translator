@@ -34,7 +34,8 @@ ONE_CHAR_OPERATORS = {
     '>',
     '|',
     '&',
-    '%'
+    '%',
+    '!'
 }
 
 TWO_CHAR_OPERATORS = {
@@ -50,7 +51,8 @@ TWO_CHAR_OPERATORS = {
     '||',
     '&&',
     '>=',
-    '<='
+    '<=',
+    '!='
 }
 
 SEPARATORS = {

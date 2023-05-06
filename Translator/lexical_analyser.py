@@ -46,7 +46,8 @@ class LexicalAnalyser:
                 IDENTIFIERS.append(IdentifierHelper(self.cur_token.id, None, None))
                 self.CURRENT_STATE ^= STATES.DEFINITION
             elif not self.check_identifier_existence():
-                raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value)
+                raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value,
+                                        ' unknown identifier')
         self.cur_token = Token(None, None, None)
         self.CURRENT_STATE |= STATES.NOTHING
         self.cur_token_id += 1
@@ -65,11 +66,14 @@ class LexicalAnalyser:
             elif STATES.SLASH in self.CURRENT_STATE:
                 if ch not in ['t', 'r', 'n', '"', '\\']:
                     raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value,
-                                            'unknown escape sequence')
+                                            ' unknown escape sequence')
                 self.CURRENT_STATE ^= STATES.SLASH
             elif ch == '"' and STATES.SLASH not in self.CURRENT_STATE:
                 self.add_token()
                 return
+            elif self.cur_col_index == len(self.cur_line) - 1:
+                raise UnknownTokenError(self.cur_line_index, self.cur_col_index, self.cur_token.value,
+                                        ' missing " character')
             self.cur_col_index += 1
 
     def parse_number_literal(self):
