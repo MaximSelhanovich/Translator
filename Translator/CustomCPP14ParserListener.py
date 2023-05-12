@@ -15,9 +15,17 @@ class Identifier:
 
 
 class IdentifierTable(list):
-    def check_variable(self, var_name: str):
+    def check_variable(self, var_name: str, nesting_block: int, nesting_level: int):
+        if nesting_level < -1:
+            return False
         for i in self.__iter__():
-            pass
+            if i.name == var_name and i.nesting_block == nesting_block and i.nesting_level == nesting_level:
+                return True
+        return self.check_variable(var_name, nesting_block, nesting_level - 1)
+
+    def add_token(self, token):
+        self.append(token)
+
 
 class CustomCPP14ParserListener(CPP14ParserListener):
     def __init__(self):
@@ -27,6 +35,8 @@ class CustomCPP14ParserListener(CPP14ParserListener):
         self.nesting_level = -1
         self.nesting_block = 0
         self.identifier = Identifier(None, None, None, None, None)
+        self.class_creation = False;
+        self.cls = []
 
     def get_line_column(self, ctx):
         start, end = ctx.getSourceInterval()
@@ -61,15 +71,25 @@ class CustomCPP14ParserListener(CPP14ParserListener):
         pass
 
     def exitSimpleTypeSpecifier(self, ctx:CPP14Parser.SimpleTypeSpecifierContext):
-        print(ctx.Int(), 'exit')
+        self.identifier.type = ctx.getText()
+        self.identifier.nesting_block, self.identifier.nesting_level = self.nesting_block, self.nesting_level
+        print('first')
         pass
 
     def enterUnqualifiedId(self, ctx:CPP14Parser.UnqualifiedIdContext):
         pass
 
     def exitUnqualifiedId(self, ctx:CPP14Parser.UnqualifiedIdContext):
-        #print(f'{ctx.getText()} at ( {str(self.nesting_block)}, {self.nesting_level})')
-        pass
+        lin, col = self.get_line_column(ctx)
+        if self.identifier.type is None:
+            if not self.vars.check_variable(ctx.getText(), self.nesting_block, self.nesting_level):
+                raise UnknownIdentifier(lin, col, f'unknown identifier ({ctx.getText()})')
+        else:
+            if self.vars.check_variable(ctx.getText(), self.nesting_block, self.nesting_level):
+                raise DoubleDeclaration(lin, col, f'double identifier declaration ({ctx.getText()})')
+            self.identifier.name = ctx.getText()
+            self.vars.add_token(self.identifier)
+            self.identifier = Identifier(None, None, None, None, None)
 
     def enterFunctionDefinition(self, ctx:CPP14Parser.FunctionDefinitionContext):
         self.nesting_block += 1
@@ -84,17 +104,33 @@ class CustomCPP14ParserListener(CPP14ParserListener):
     def exitCompoundStatement(self, ctx:CPP14Parser.CompoundStatementContext):
         self.nesting_level -= 1
 
+    def enterDeclSpecifierSeq(self, ctx:CPP14Parser.DeclSpecifierSeqContext):
+        pass
+
+    # Exit a parse tree produced by CPP14Parser#declSpecifierSeq.
+    def exitDeclSpecifierSeq(self, ctx:CPP14Parser.DeclSpecifierSeqContext):
+        print(ctx.getText(), ' in declSpec')
+        pass
+
     def enterSimpleDeclaration(self, ctx:CPP14Parser.SimpleDeclarationContext):
-        ctx.declSpecifierSeq()
         pass
 
+    # Exit a parse tree produced by CPP14Parser#simpleDeclaration.
     def exitSimpleDeclaration(self, ctx:CPP14Parser.SimpleDeclarationContext):
+        print(ctx.getChildCount(), 'child exit')
         pass
 
-    def enterNoPointerDeclarator(self, ctx:CPP14Parser.NoPointerDeclaratorContext):
+    def enterClassName(self, ctx:CPP14Parser.ClassNameContext):
         pass
 
-    # Exit a parse tree produced by CPP14Parser#noPointerDeclarator.
-    def exitNoPointerDeclarator(self, ctx:CPP14Parser.NoPointerDeclaratorContext):
-        print(ctx.getText())
+    # Exit a parse tree produced by CPP14Parser#className.
+    def exitClassName(self, ctx:CPP14Parser.ClassNameContext):
+        if not self.class_creation and ctx.getText() not in self.cls:
+            lin, col = self.get_line_column(ctx)
+            raise UnknownIdentifier(lin, col, f'unknown identifier ({ctx.getText()})')
+
+    def enterBraceOrEqualInitializer(self, ctx:CPP14Parser.BraceOrEqualInitializerContext):
+        pass
+
+    def exitBraceOrEqualInitializer(self, ctx:CPP14Parser.BraceOrEqualInitializerContext):
         pass

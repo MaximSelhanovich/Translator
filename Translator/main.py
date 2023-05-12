@@ -20,7 +20,7 @@ def print_tree(tree, parser):
             print("  " + child.toString())
         else:
             print("  ", child)
-            print_tree(child, parser);
+            print_tree(child, parser)
 
 
 class ASTNode:
@@ -81,5 +81,5 @@ if __name__ == '__main__':
     listener = CustomCPP14ParserListener()
     parser.addParseListener(listener)
     tree = parser.translationUnit()
-    print(tree.toStringTree(recog=parser))
+    print(listener.vars)
 
