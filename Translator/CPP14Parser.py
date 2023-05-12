@@ -3,6 +3,9 @@
 from antlr4 import *
 from io import StringIO
 import sys
+
+from antlr4.error.Errors import InputMismatchException
+
 if sys.version_info[1] > 5:
 	from typing import TextIO
 else:
@@ -14151,7 +14154,8 @@ class CPP14Parser ( Parser ):
             self.match(CPP14Parser.Assign)
             self.state = 1783
             localctx.val = self.match(CPP14Parser.OctalLiteral)
-            if((None if localctx.val is None else localctx.val.text).compareTo("0")!=0) throw new InputMismatchException(this);
+            if((None if localctx.val is None else localctx.val.text).compareTo("0")!=0):
+                raise InputMismatchException(self)
             		
         except RecognitionException as re:
             localctx.exception = re
