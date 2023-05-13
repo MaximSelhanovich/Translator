@@ -444,7 +444,10 @@ usingDeclaration:
 usingDirective:
 	attributeSpecifierSeq? Using Namespace nestedNameSpecifier? namespaceName Semi;
 
-asmDefinition: Asm LeftParen StringLiteral RightParen Semi;
+asmDefinition: Asm LeftParen (StringLiteral
+                            | Colon StringLiteral LeftParen Identifier RightParen
+                            | Colon StringLiteral LeftParen Identifier RightParen Comma Colon StringLiteral LeftParen Identifier RightParen
+                            ) RightParen Semi;
 
 linkageSpecification:
 	Extern StringLiteral (

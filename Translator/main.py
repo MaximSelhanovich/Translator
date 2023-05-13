@@ -8,6 +8,7 @@ from CPP14Parser import CPP14Parser
 from CPP14Lexer import CPP14Lexer
 from CPP14ParserVisitor import CPP14ParserVisitor
 from antlr4 import *
+from parser_errors import *
 
 
 def print_tree(tree, parser):
@@ -74,12 +75,15 @@ def print_tree(node, depth=0):
 
 
 if __name__ == '__main__':
-    input_stream = FileStream('test.cpp')
-    lexer = CPP14Lexer(input_stream)
-    stream = CommonTokenStream(lexer)
-    parser = CPP14Parser(stream)
-    listener = CustomCPP14ParserListener()
-    parser.addParseListener(listener)
-    tree = parser.translationUnit()
-    print(listener.vars)
+    try:
+        input_stream = FileStream('test.cpp')
+        lexer = CPP14Lexer(input_stream)
+        stream = CommonTokenStream(lexer)
+        parser = CPP14Parser(stream)
+        listener = CustomCPP14ParserListener()
+        parser.addParseListener(listener)
+        tree = parser.translationUnit()
+        print_tree(tree)
+    except ParserError as ex:
+        print(ex)
 

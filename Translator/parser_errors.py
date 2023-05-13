@@ -21,3 +21,13 @@ class UnknownIdentifier(ParserError):
 class DoubleDeclaration(ParserError):
     def __init__(self, line, column, message):
         super().__init__(line, column, message)
+
+
+class ZeroDivision(ParserError):
+    def __init__(self, line, column, message):
+        super().__init__(line, column, message)
+
+
+class TypeMissmatch(ParserError):
+    def __init__(self, line, column, message):
+        super().__init__(line, column, message)
